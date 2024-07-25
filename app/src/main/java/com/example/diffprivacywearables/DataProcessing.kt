@@ -1,26 +1,31 @@
 package com.example.diffprivacywearables
 
-import kotlin.math.exp
-import kotlin.random.Random
+import com.example.diffprivacywearables.data.HeartRateDataPoint
 
 object DataProcessing {
-    fun applyLaplaceMechanism(value: Double, epsilon: Double): Double {
-        val scale = 1.0 / epsilon
-        return value + laplaceNoise(scale)
+    fun applyLaplaceMechanism(data: List<HeartRateDataPoint>, epsilon: Double): List<HeartRateDataPoint> {
+        // Implement the Laplace mechanism here
+        return data.map {
+            val noise = laplaceNoise(epsilon)
+            HeartRateDataPoint(it.timestamp, it.heartRate + noise)
+        }
     }
 
-    fun applyExponentialMechanism(value: Double, epsilon: Double): Double {
-        return expNoise(value, epsilon)
+    fun applyExponentialMechanism(data: List<HeartRateDataPoint>, epsilon: Double): List<HeartRateDataPoint> {
+        // Implement the Exponential mechanism here
+        return data.map {
+            val noise = exponentialNoise(epsilon)
+            HeartRateDataPoint(it.timestamp, it.heartRate + noise)
+        }
     }
 
-    private fun laplaceNoise(scale: Double): Double {
-        val u = Random.nextDouble() - 0.5
-        return -scale * kotlin.math.sign(u) * kotlin.math.ln(1 - 2 * kotlin.math.abs(u))
+    private fun laplaceNoise(epsilon: Double): Double {
+        // Generate Laplace noise based on epsilon
+        return Math.random() // This is a placeholder
     }
 
-    private fun expNoise(value: Double, epsilon: Double): Double {
-        // Simplified exponential mechanism for demonstration
-        val noise = Random.nextDouble()
-        return value * exp(epsilon * noise)
+    private fun exponentialNoise(epsilon: Double): Double {
+        // Generate Exponential noise based on epsilon
+        return Math.random() // This is a placeholder
     }
 }

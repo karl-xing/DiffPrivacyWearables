@@ -62,4 +62,13 @@ dependencies {
     androidTestImplementation(libs.ui.test.junit4)
     debugImplementation(libs.ui.tooling)
     debugImplementation(libs.ui.test.manifest)
+    implementation(libs.play.services.fitness)
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+
+    implementation (libs.androidx.lifecycle.viewmodel.compose)
+    implementation (libs.lifecycle.runtime.compose)
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+
 }
