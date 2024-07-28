@@ -27,6 +27,12 @@
         <meta-data
             android:name="com.google.android.wearable.standalone"
             android:value="true" />
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version" />
+        <meta-data
+            android:name="com.google.android.libraries.identity.googleid.SERVER_CLIENT_ID"
+            android:value="1002620828847-7bhp6u2im9st49fsqk63bqi883s3o16d.apps.googleusercontent.com" />
 
         <activity
             android:name=".presentation.MainActivity"
@@ -39,6 +45,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
     </application>
 
 </manifest>

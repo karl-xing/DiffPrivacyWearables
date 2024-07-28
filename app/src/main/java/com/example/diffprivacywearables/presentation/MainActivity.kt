@@ -1,12 +1,9 @@
-@file:Suppress("DEPRECATION")
-
 package com.example.diffprivacywearables.presentation
 
-//import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -20,33 +17,27 @@ import com.example.diffprivacywearables.DataProcessing
 import com.example.diffprivacywearables.Evaluation
 import com.example.diffprivacywearables.SignInGoogle
 import com.example.diffprivacywearables.presentation.theme.DiffPrivacyWearablesTheme
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private lateinit var heartRateManager: HeartRateManager
     private lateinit var signInGoogle: SignInGoogle
 
-    private val signInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        signInGoogle.handleSignInResult(result.data)
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         heartRateManager = HeartRateManager(this)
 
-        signInGoogle = SignInGoogle(
-            context = this,
-            signInLauncher = signInLauncher,
-            onSignInSuccess = { account ->
-                onAccountSignedIn()
-            },
-            onSignInTimeout = {
-                // Handle sign-in timeout here
-                println("Sign-in timed out")
-            }
-        )
-
         setContent {
+            val coroutineScope = rememberCoroutineScope()
+            var googleIdTokenCredential by remember { mutableStateOf<GoogleIdTokenCredential?>(null) }
+
+            signInGoogle = SignInGoogle(
+                context = this,
+                coroutineScope = coroutineScope,
+                onGoogleIdTokenCredentialUpdated = { credential -> googleIdTokenCredential = credential }
+            )
+
             DiffPrivacyWearablesTheme {
                 Scaffold(
                     timeText = {
@@ -60,11 +51,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
-
-    private fun onAccountSignedIn() {
-        // Account signed in successfully, initialize heart rate manager with account permissions
-        // No need to reinitialize heartRateManager since it is already initialized in onCreate
     }
 
     @Composable
@@ -143,25 +129,38 @@ class MainActivity : ComponentActivity() {
             }
             item {
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Reading heart rate data for the past hour.")
-                Text("Fetch Success: $fetchSuccess")
+                Column {
+                    Text("Reading heart rate(1 hour ago)")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Fetch Success: $fetchSuccess")
+                }
             }
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = {
-                        signInGoogle.requestGoogleSignIn()
                         lifecycleScope.launch {
                             heartRateData = heartRateManager.getHeartRateHistoryData()
                             fetchSuccess = heartRateData.isNotEmpty()
                             heartRateData.forEach {
-                                android.util.Log.d("HeartRateData", "Timestamp: ${it.timestamp}, Heart Rate: ${it.heartRate} bpm")
+                                Log.d("HeartRateData", "Timestamp: ${it.timestamp}, Heart Rate: ${it.heartRate} bpm")
                             }
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Collect Data")
+                }
+            }
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        signInGoogle.signUpWithGoogle()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Google Sign-In")
                 }
             }
             item {
