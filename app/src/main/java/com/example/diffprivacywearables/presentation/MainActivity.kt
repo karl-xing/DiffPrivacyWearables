@@ -2,7 +2,7 @@
 
 package com.example.diffprivacywearables.presentation
 
-import android.content.Intent
+//import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -10,7 +10,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+//import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material.*
@@ -64,7 +64,7 @@ class MainActivity : ComponentActivity() {
         val evaluationMetrics = listOf("Computation Time", "Power Consumption", "Memory Usage", "CPU Usage")
         val selectedDataTypes = remember { mutableStateListOf<String>() }
         val selectedMetrics = remember { mutableStateListOf<String>() }
-        var heartRateData by remember { mutableStateOf("No data") }
+        val heartRateData by remember { mutableStateOf("No data") }
 
         ScalingLazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -168,7 +168,7 @@ class MainActivity : ComponentActivity() {
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(text = "1 hour HeartRate")
+                    Text(text = "Fetch Heart Rate Data")
                 }
             }
             item {
@@ -185,7 +185,7 @@ class MainActivity : ComponentActivity() {
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(text = "Historical HeartRate")
+                    Text(text = "Fetch Historical Heart Rate Data")
                 }
             }
             item {

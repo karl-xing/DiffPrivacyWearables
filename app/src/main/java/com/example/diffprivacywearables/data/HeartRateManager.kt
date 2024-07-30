@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.example.diffprivacywearables.data
 
 import android.content.Context
@@ -54,9 +56,9 @@ class HeartRateManager(private val context: Context) {
         for (bucket in dataReadResult.buckets) {
             for (dataSet in bucket.dataSets) {
                 for (dataPoint in dataSet.dataPoints) {
-                    val heartRate = dataPoint.getValue(Field.FIELD_BPM).asFloat()
-                    val timestamp = dataPoint.getTimestamp(TimeUnit.MILLISECONDS)
-                    heartRateData.add(HeartRateDataPoint(timestamp, heartRate.toDouble()))
+                    val average = dataPoint.getValue(Field.FIELD_AVERAGE).asFloat()
+                    val timestamp = dataPoint.getStartTime(TimeUnit.MILLISECONDS)
+                    heartRateData.add(HeartRateDataPoint(timestamp, average.toDouble()))
                 }
             }
         }
