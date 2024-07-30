@@ -1,43 +1,47 @@
+@file:Suppress("DEPRECATION")
+
 package com.example.diffprivacywearables.presentation
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.lifecycleScope
 import androidx.wear.compose.material.*
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
-import com.example.diffprivacywearables.data.HeartRateDataPoint
-import com.example.diffprivacywearables.data.HeartRateManager
 import com.example.diffprivacywearables.DataProcessing
 import com.example.diffprivacywearables.Evaluation
-import com.example.diffprivacywearables.SignInGoogle
+import com.example.diffprivacywearables.data.HeartRateDataPoint
+import com.example.diffprivacywearables.data.HeartRateManager
 import com.example.diffprivacywearables.presentation.theme.DiffPrivacyWearablesTheme
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.fitness.Fitness
+import com.google.android.gms.fitness.data.DataType
+import com.google.android.gms.fitness.data.Field
+import com.google.android.gms.fitness.request.DataReadRequest
+import com.google.android.gms.fitness.result.DataReadResponse
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
+import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
+    private val TAG = "GoogleFit"
     private lateinit var heartRateManager: HeartRateManager
-    private lateinit var signInGoogle: SignInGoogle
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         heartRateManager = HeartRateManager(this)
-
         setContent {
-            val coroutineScope = rememberCoroutineScope()
-            var googleIdTokenCredential by remember { mutableStateOf<GoogleIdTokenCredential?>(null) }
-
-            signInGoogle = SignInGoogle(
-                context = this,
-                coroutineScope = coroutineScope,
-                onGoogleIdTokenCredentialUpdated = { credential -> googleIdTokenCredential = credential }
-            )
-
             DiffPrivacyWearablesTheme {
                 Scaffold(
                     timeText = {
@@ -47,21 +51,20 @@ class MainActivity : ComponentActivity() {
                         Vignette(vignettePosition = VignettePosition.TopAndBottom)
                     }
                 ) {
-                    MainScreen(heartRateManager, signInGoogle)
+                    MainScreen()
                 }
             }
         }
     }
 
     @Composable
-    fun MainScreen(heartRateManager: HeartRateManager, signInGoogle: SignInGoogle) {
-        var heartRateData by remember { mutableStateOf<List<HeartRateDataPoint>>(emptyList()) }
-        var fetchSuccess by remember { mutableStateOf(false) }
+    fun MainScreen() {
         var selectedAlgorithm by remember { mutableStateOf("Laplace") }
         val dataTypes = listOf("Heart Rate", "Step Count", "Acceleration")
         val evaluationMetrics = listOf("Computation Time", "Power Consumption", "Memory Usage", "CPU Usage")
         val selectedDataTypes = remember { mutableStateListOf<String>() }
         val selectedMetrics = remember { mutableStateListOf<String>() }
+        var heartRateData by remember { mutableStateOf("No data") }
 
         ScalingLazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -129,42 +132,6 @@ class MainActivity : ComponentActivity() {
             }
             item {
                 Spacer(modifier = Modifier.height(16.dp))
-                Column {
-                    Text("Reading heart rate(1 hour ago)")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Fetch Success: $fetchSuccess")
-                }
-            }
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = {
-                        lifecycleScope.launch {
-                            heartRateData = heartRateManager.getHeartRateHistoryData()
-                            fetchSuccess = heartRateData.isNotEmpty()
-                            heartRateData.forEach {
-                                Log.d("HeartRateData", "Timestamp: ${it.timestamp}, Heart Rate: ${it.heartRate} bpm")
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Collect Data")
-                }
-            }
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = {
-                        signInGoogle.signUpWithGoogle()
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Google Sign-In")
-                }
-            }
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = {
                         val epsilon = 1.0 // Example epsilon value
@@ -175,20 +142,128 @@ class MainActivity : ComponentActivity() {
                             DataProcessing::applyExponentialMechanism
                         }
 
-                        // Apply the selected differential privacy algorithm to heart rate data
-                        val processedData = algorithm(heartRateData, epsilon)
-
-                        // Evaluate the selected algorithm
-                        val results = Evaluation.evaluateAlgorithm(algorithm, heartRateData, epsilon)
-                        println("Evaluation Results: $results")
-
-                        // Implement logic to process the selected data types and metrics
+                        // Fetch data using HeartRateManager
+                        CoroutineScope(Dispatchers.IO).launch {
+                            val heartRateDataPoints = heartRateManager.getHeartRateHistoryData()
+                            val results = Evaluation.evaluateAlgorithm(algorithm, heartRateDataPoints, epsilon)
+                            Log.d(TAG, "Evaluation Results: $results")
+                        }
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Evaluate")
                 }
             }
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        val account = GoogleSignIn.getLastSignedInAccount(this@MainActivity)
+                        if (account != null) {
+                            accessGoogleFitData(account)
+                        } else {
+                            Log.e(TAG, "No Google account signed in")
+                            Toast.makeText(this@MainActivity, "No Google account signed in", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = "1 hour HeartRate")
+                }
+            }
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        val account = GoogleSignIn.getLastSignedInAccount(this@MainActivity)
+                        if (account != null) {
+                            accessHistoricalHeartRateData(account)
+                        } else {
+                            Log.e(TAG, "No Google account signed in")
+                            Toast.makeText(this@MainActivity, "No Google account signed in", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = "Historical HeartRate")
+                }
+            }
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(text = heartRateData)
+            }
+        }
+    }
+
+    private fun accessGoogleFitData(googleSignInAccount: GoogleSignInAccount) {
+        val endTime = System.currentTimeMillis()
+        val startTime = endTime - TimeUnit.HOURS.toMillis(1)
+
+        val readRequest = DataReadRequest.Builder()
+            .read(DataType.TYPE_HEART_RATE_BPM)
+            .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+            .build()
+
+        Fitness.getHistoryClient(this, googleSignInAccount)
+            .readData(readRequest)
+            .addOnSuccessListener { dataReadResponse ->
+                val heartRateData = parseHeartRateData(dataReadResponse)
+                Log.d(TAG, "Heart Rate Data: $heartRateData")
+                runOnUiThread {
+                    Toast.makeText(this, "Heart Rate Data: $heartRateData", Toast.LENGTH_LONG).show()
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Failed to read heart rate data", e)
+                runOnUiThread {
+                    Toast.makeText(this, "Failed to read heart rate data", Toast.LENGTH_SHORT).show()
+                }
+            }
+    }
+
+    private fun accessHistoricalHeartRateData(googleSignInAccount: GoogleSignInAccount) {
+        val endTime = System.currentTimeMillis()
+        val startTime = endTime - TimeUnit.HOURS.toMillis(24)
+
+        val readRequest = DataReadRequest.Builder()
+            .read(DataType.TYPE_HEART_RATE_BPM)
+            .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+            .build()
+
+        Fitness.getHistoryClient(this, googleSignInAccount)
+            .readData(readRequest)
+            .addOnSuccessListener { dataReadResponse ->
+                val heartRateData = parseHeartRateData(dataReadResponse)
+                Log.d(TAG, "Historical Heart Rate Data: $heartRateData")
+                runOnUiThread {
+                    Toast.makeText(this, "Historical Heart Rate Data: $heartRateData", Toast.LENGTH_LONG).show()
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Failed to read historical heart rate data", e)
+                runOnUiThread {
+                    Toast.makeText(this, "Failed to read historical heart rate data", Toast.LENGTH_SHORT).show()
+                }
+            }
+    }
+
+    private fun parseHeartRateData(dataReadResponse: DataReadResponse): String {
+        val heartRateDataSet = dataReadResponse.getDataSet(DataType.TYPE_HEART_RATE_BPM)
+        val dataPoints = heartRateDataSet.dataPoints
+
+        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+
+        return if (dataPoints.isNotEmpty()) {
+            val sb = StringBuilder()
+            for (dp in dataPoints) {
+                val heartRate = dp.getValue(Field.FIELD_BPM).asFloat()
+                val timestamp = dp.getTimestamp(TimeUnit.MILLISECONDS)
+                val date = sdf.format(Date(timestamp))
+                sb.append("Heart Rate: $heartRate BPM at $date\n")
+            }
+            sb.toString()
+        } else {
+            "No heart rate data available"
         }
     }
 }

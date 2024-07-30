@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "1002620828847",
+    "project_id": "diffprivacywearables",
+    "storage_bucket": "diffprivacywearables.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1002620828847:android:9e06ae8096c6a7ba4a685a",
+        "android_client_info": {
+          "package_name": "com.example.diffprivacywearables"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1002620828847-7bhp6u2im9st49fsqk63bqi883s3o16d.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.diffprivacywearables",
+            "certificate_hash": "8b8aea0a7d604d5c031070f55fd9c90d4ee3d6c5"
+          }
+        },
+        {
+          "client_id": "1002620828847-ahg9lg27dhd394re1a52pkkc7jv2542b.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhmUGe0QyMwchb99OAUsJg0cUnghOj0OA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1002620828847-ahg9lg27dhd394re1a52pkkc7jv2542b.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

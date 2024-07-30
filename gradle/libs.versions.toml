@@ -1,7 +1,6 @@
 [versions]
 agp = "8.5.1"
 kotlin = "1.9.0"
-lifecycleRuntimeCompose = "2.8.4"
 lifecycleViewmodelCompose = "2.8.4"
 playServicesFitness = "21.2.0"
 playServicesWearable = "18.2.0"
@@ -14,7 +13,6 @@ material3Android = "1.2.1"
 
 [libraries]
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycleViewmodelCompose" }
-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycleRuntimeCompose" }
 play-services-fitness = { module = "com.google.android.gms:play-services-fitness", version.ref = "playServicesFitness" }
 play-services-wearable = { group = "com.google.android.gms", name = "play-services-wearable", version.ref = "playServicesWearable" }
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
