@@ -72,18 +72,24 @@ class LoginActivity : ComponentActivity() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Button(onClick = {
-                signIn()
-            }) {
-                Text(text = "Sign In with Google")
+            Button(
+                onClick = {
+                    signIn()
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(text = "SignIn Google")
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Button(onClick = {
-                val intent = Intent(this@LoginActivity, MainActivity::class.java)
-                startActivity(intent)
-            }) {
+            Button(
+                onClick = {
+                    val intent = Intent(this@LoginActivity, MainActivity::class.java)
+                    startActivity(intent)
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text(text = "Go to Home")
             }
         }

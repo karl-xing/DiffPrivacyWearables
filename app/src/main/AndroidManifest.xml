@@ -34,8 +34,9 @@
 <!--            android:name="com.google.android.libraries.identity.googleid.SERVER_CLIENT_ID"-->
 <!--            android:value="1002620828847-7bhp6u2im9st49fsqk63bqi883s3o16d.apps.googleusercontent.com" />-->
 
+        <activity android:name=".presentation.MainActivity"> </activity>
         <activity
-            android:name=".presentation.MainActivity"
+            android:name=".presentation.LoginActivity"
             android:exported="true"
             android:taskAffinity=""
             android:theme="@style/MainActivityTheme.Starting">
