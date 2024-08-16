@@ -2,7 +2,6 @@
 
 package com.example.diffprivacywearables.presentation
 
-//import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -10,15 +9,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
-//import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material.*
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
-import com.example.diffprivacywearables.DataProcessing
+import com.example.diffprivacywearables.data.DataProcessing
 import com.example.diffprivacywearables.Evaluation
 import com.example.diffprivacywearables.data.HeartRateDataPoint
 import com.example.diffprivacywearables.data.HeartRateManager
+import com.example.diffprivacywearables.data.DataPoint
 import com.example.diffprivacywearables.presentation.theme.DiffPrivacyWearablesTheme
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
@@ -64,13 +63,63 @@ class MainActivity : ComponentActivity() {
         val evaluationMetrics = listOf("Computation Time", "Power Consumption", "Memory Usage", "CPU Usage")
         val selectedDataTypes = remember { mutableStateListOf<String>() }
         val selectedMetrics = remember { mutableStateListOf<String>() }
-        val heartRateData by remember { mutableStateOf("No data") }
 
         ScalingLazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        val account = GoogleSignIn.getLastSignedInAccount(this@MainActivity)
+                        if (account != null) {
+                            accessGoogleFitData(account)
+                        } else {
+                            Log.e(TAG, "No Google account signed in")
+                            Toast.makeText(this@MainActivity, "No Google account signed in", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = "Fetch HR Data")
+                }
+            }
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        val account = GoogleSignIn.getLastSignedInAccount(this@MainActivity)
+                        if (account != null) {
+                            accessHistoricalHeartRateData(account)
+                        } else {
+                            Log.e(TAG, "No Google account signed in")
+                            Toast.makeText(this@MainActivity, "No Google account signed in", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = "Fetch Historical HR Data")
+                }
+            }
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            val heartRateDataPoints = heartRateManager.getHeartRateHistoryData()
+                            // Save heart rate data to JSON file
+                            heartRateManager.saveHeartRateData(heartRateDataPoints)
+                            heartRateManager.exportHeartRateDataToExternalStorage(heartRateDataPoints)
+                        }
+                        Toast.makeText(this@MainActivity, "Data exported!", Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Export Data")
+                }
+            }
             item {
                 Text("Select Algorithm")
             }
@@ -85,6 +134,13 @@ class MainActivity : ComponentActivity() {
                 Chip(
                     onClick = { selectedAlgorithm = "Exponential" },
                     label = { Text("Exponential Mechanism") },
+                    colors = ChipDefaults.primaryChipColors()
+                )
+            }
+            item {
+                Chip(
+                    onClick = { selectedAlgorithm = "k-Anonymity" },
+                    label = { Text("Personalized k-Anonymity") },
                     colors = ChipDefaults.primaryChipColors()
                 )
             }
@@ -135,11 +191,17 @@ class MainActivity : ComponentActivity() {
                 Button(
                     onClick = {
                         val epsilon = 1.0 // Example epsilon value
+                        val k = 3 // Example k value for k-Anonymity
 
-                        val algorithm: (List<HeartRateDataPoint>, Double) -> List<HeartRateDataPoint> = if (selectedAlgorithm == "Laplace") {
-                            DataProcessing::applyLaplaceMechanism
-                        } else {
-                            DataProcessing::applyExponentialMechanism
+                        val algorithm: (List<HeartRateDataPoint>, Double) -> List<HeartRateDataPoint> = when (selectedAlgorithm) {
+                            "Laplace" -> DataProcessing::applyLaplaceMechanism
+                            "Exponential" -> DataProcessing::applyExponentialMechanism
+                            "k-Anonymity" -> { data, _ ->
+                                val dataPoints = data.map { DataPoint(listOf(it.heartRate.toDouble())) }
+                                val anonymizedData = DataProcessing.personalizedKAnonymity(dataPoints, k)
+                                anonymizedData.map { HeartRateDataPoint(it.attributes[0].toLong(), it.attributes[0]) }
+                            }
+                            else -> DataProcessing::applyLaplaceMechanism
                         }
 
                         // Fetch data using HeartRateManager
@@ -153,44 +215,6 @@ class MainActivity : ComponentActivity() {
                 ) {
                     Text("Evaluate")
                 }
-            }
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = {
-                        val account = GoogleSignIn.getLastSignedInAccount(this@MainActivity)
-                        if (account != null) {
-                            accessGoogleFitData(account)
-                        } else {
-                            Log.e(TAG, "No Google account signed in")
-                            Toast.makeText(this@MainActivity, "No Google account signed in", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(text = "Fetch Heart Rate Data")
-                }
-            }
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = {
-                        val account = GoogleSignIn.getLastSignedInAccount(this@MainActivity)
-                        if (account != null) {
-                            accessHistoricalHeartRateData(account)
-                        } else {
-                            Log.e(TAG, "No Google account signed in")
-                            Toast.makeText(this@MainActivity, "No Google account signed in", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(text = "Fetch Historical Heart Rate Data")
-                }
-            }
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(text = heartRateData)
             }
         }
     }
@@ -223,7 +247,7 @@ class MainActivity : ComponentActivity() {
 
     private fun accessHistoricalHeartRateData(googleSignInAccount: GoogleSignInAccount) {
         val endTime = System.currentTimeMillis()
-        val startTime = endTime - TimeUnit.HOURS.toMillis(24)
+        val startTime = endTime - TimeUnit.HOURS.toMillis(240)
 
         val readRequest = DataReadRequest.Builder()
             .read(DataType.TYPE_HEART_RATE_BPM)
@@ -234,15 +258,15 @@ class MainActivity : ComponentActivity() {
             .readData(readRequest)
             .addOnSuccessListener { dataReadResponse ->
                 val heartRateData = parseHeartRateData(dataReadResponse)
-                Log.d(TAG, "Historical Heart Rate Data: $heartRateData")
+                Log.d(TAG, "Historical HR: $heartRateData")
                 runOnUiThread {
-                    Toast.makeText(this, "Historical Heart Rate Data: $heartRateData", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "Historical HR: $heartRateData", Toast.LENGTH_LONG).show()
                 }
             }
             .addOnFailureListener { e ->
-                Log.e(TAG, "Failed to read historical heart rate data", e)
+                Log.e(TAG, "Failed to read historical HR data", e)
                 runOnUiThread {
-                    Toast.makeText(this, "Failed to read historical heart rate data", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Failed to read historical HR data", Toast.LENGTH_SHORT).show()
                 }
             }
     }
