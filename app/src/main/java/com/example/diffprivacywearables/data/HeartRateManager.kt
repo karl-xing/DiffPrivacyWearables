@@ -17,6 +17,8 @@ import kotlinx.coroutines.tasks.await
 import java.util.*
 import java.util.concurrent.TimeUnit
 import java.io.File
+import java.text.SimpleDateFormat
+
 
 data class HeartRateDataPoint(
     val timestamp: Long, // Unix timestamp in milliseconds
@@ -30,32 +32,68 @@ class HeartRateManager(private val context: Context) {
     private val fitnessOptions = FitnessOptions.builder()
         .addDataType(DataType.TYPE_HEART_RATE_BPM, FitnessOptions.ACCESS_READ)
         .build()
-
     private val account = GoogleSignIn.getAccountForExtension(context, fitnessOptions)
 
-    suspend fun getHeartRateHistoryData(): List<HeartRateDataPoint> {
-//        val calendar = Calendar.getInstance()
-//        calendar.set(Calendar.MINUTE, 0)
-//        calendar.set(Calendar.SECOND, 0)
-//        calendar.set(Calendar.MILLISECOND, 0)
-//        val endTime = calendar.timeInMillis
-        val startTime = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30)
-        val endTime = System.currentTimeMillis()
+    suspend fun getHeartRateData(
+        days: Long = 30,
+        bucketTimeMinutes: Int = 20,
+        aggregate: Boolean = true,
+        callback: (String) -> Unit = {}
+    ): List<HeartRateDataPoint> {
+//        val endTime = System.currentTimeMillis()
+        val endTime = Calendar.getInstance().apply {
+            set(Calendar.YEAR, 2024)
+            set(Calendar.MONTH, Calendar.AUGUST)
+            set(Calendar.DAY_OF_MONTH, 16)
+            set(Calendar.HOUR_OF_DAY, 10)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val startTime = endTime - TimeUnit.DAYS.toMillis(days)
 
-
-        val readRequest = DataReadRequest.Builder()
-            .aggregate(DataType.TYPE_HEART_RATE_BPM, DataType.AGGREGATE_HEART_RATE_SUMMARY)
-            .bucketByTime(20, TimeUnit.MINUTES)     // Bucket by hour
-//            .bucketByTime(1, TimeUnit.HOURS) // Bucket by hour
+        val readRequestBuilder = DataReadRequest.Builder()
             .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
-            .build()
+
+        if (aggregate) {
+            readRequestBuilder.aggregate(DataType.TYPE_HEART_RATE_BPM, DataType.AGGREGATE_HEART_RATE_SUMMARY)
+                .bucketByTime(bucketTimeMinutes, TimeUnit.MINUTES)
+        } else {
+            readRequestBuilder.read(DataType.TYPE_HEART_RATE_BPM)
+        }
+
+        val readRequest = readRequestBuilder.build()
 
         return try {
             val response: DataReadResponse = Fitness.getHistoryClient(context, account).readData(readRequest).await()
-            processDataReadResult(response)
+            val heartRateData = processDataReadResult(response)
+            val heartRateDataStr = parseHeartRateData(response)
+            callback(heartRateDataStr)
+            heartRateData
         } catch (e: Exception) {
             Log.e("HeartRateManager", "There was an error reading data", e)
+            callback("Failed to read heart rate data")
             emptyList()
+        }
+    }
+
+    private fun parseHeartRateData(dataReadResponse: DataReadResponse): String {
+        val heartRateDataSet = dataReadResponse.getDataSet(DataType.TYPE_HEART_RATE_BPM)
+        val dataPoints = heartRateDataSet.dataPoints
+
+        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+
+        return if (dataPoints.isNotEmpty()) {
+            val sb = StringBuilder()
+            for (dp in dataPoints) {
+                val heartRate = dp.getValue(Field.FIELD_BPM).asFloat()
+                val timestamp = dp.getTimestamp(TimeUnit.MILLISECONDS)
+                val date = sdf.format(Date(timestamp))
+                sb.append("Heart Rate: $heartRate BPM at $date\n")
+            }
+            sb.toString()
+        } else {
+            "No heart rate data available"
         }
     }
 
@@ -70,7 +108,7 @@ class HeartRateManager(private val context: Context) {
                 }
             }
         }
-//        Log.d("HeartRateManager", "Processed HR Data2: $heartRateData")
+//        Log.d("HeartRateManager", "Processed HR Data: $heartRateData")
         return heartRateData
     }
 
