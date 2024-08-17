@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    android:installLocation="auto"
     package="com.example.diffprivacywearables">
 
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -30,11 +31,9 @@
         <meta-data
             android:name="com.google.android.gms.auth.api.signin"
             android:resource="@xml/google_services" />
-<!--        <meta-data-->
-<!--            android:name="com.google.android.libraries.identity.googleid.SERVER_CLIENT_ID"-->
-<!--            android:value="1002620828847-7bhp6u2im9st49fsqk63bqi883s3o16d.apps.googleusercontent.com" />-->
 
-        <activity android:name=".presentation.MainActivity"> </activity>
+        <activity android:name=".presentation.MainActivity"
+            android:taskAffinity=""> </activity>
         <activity
             android:name=".presentation.LoginActivity"
             android:exported="true"

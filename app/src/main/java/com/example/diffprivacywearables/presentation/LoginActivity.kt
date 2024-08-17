@@ -68,7 +68,7 @@ class LoginActivity : ComponentActivity() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(text = "Google Fit Heart Rate Reader")
+            Text(text = "Google Fit Reader")
 
             Spacer(modifier = Modifier.height(16.dp))
 

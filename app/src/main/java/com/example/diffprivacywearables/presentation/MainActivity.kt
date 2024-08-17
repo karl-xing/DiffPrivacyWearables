@@ -16,10 +16,9 @@ import androidx.wear.compose.material.*
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import com.example.diffprivacywearables.data.DataProcessing
 import com.example.diffprivacywearables.Evaluation
-import com.example.diffprivacywearables.data.HeartRateDataPoint
-import com.example.diffprivacywearables.data.HeartRateManager
 import com.example.diffprivacywearables.data.FitnessDataManager
 import com.example.diffprivacywearables.data.DataPoint
+import com.example.diffprivacywearables.data.FitnessDataPoint
 import com.example.diffprivacywearables.presentation.theme.DiffPrivacyWearablesTheme
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.fitness.data.DataType
@@ -30,12 +29,10 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val TAG = "GoogleFit"
-    private lateinit var heartRateManager: HeartRateManager
     private lateinit var fitnessDataManager: FitnessDataManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        heartRateManager = HeartRateManager(this)
         fitnessDataManager = FitnessDataManager(this)
         setContent {
             DiffPrivacyWearablesTheme {
@@ -56,9 +53,11 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun MainScreen() {
         var selectedAlgorithm by remember { mutableStateOf("Laplace") }
-        val dataTypes = listOf("Heart Rate", "Step Count", "Acceleration")
+        val dataTypes = listOf("Heart Rate", "Step Count")
+            // "Heart Rate", "Step Count", "Acceleration"
         val evaluationMetrics =
-            listOf("Computation Time", "Power Consumption", "Memory Usage", "CPU Usage")
+            listOf("Computation Time", "Memory Usage")
+            // "Computation Time", "Power Consumption", "Memory Usage", "CPU Usage"
         val selectedDataTypes = remember { mutableStateListOf<String>() }
         val selectedMetrics = remember { mutableStateListOf<String>() }
 
@@ -74,12 +73,13 @@ class MainActivity : ComponentActivity() {
                         val account = GoogleSignIn.getLastSignedInAccount(this@MainActivity)
                         if (account != null) {
                             lifecycleScope.launch {
-                                heartRateManager.getHeartRateData(1, 20, false) { heartRateData ->
-                                    Log.d(TAG, "1 Day HR: $heartRateData")
+                                fitnessDataManager.getFitnessData(DataType.TYPE_HEART_RATE_BPM,
+                                    1, 20, false) { fitnessData ->
+                                    Log.d(TAG, "Fitness Data: $fitnessData")
                                     runOnUiThread {
                                         Toast.makeText(
                                             this@MainActivity,
-                                            "Heart Rate Data: $heartRateData",
+                                            "Fitness Data: $fitnessData",
                                             Toast.LENGTH_LONG
                                         ).show()
                                     }
@@ -96,7 +96,7 @@ class MainActivity : ComponentActivity() {
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(text = "Fetch 1Day HR")
+                    Text(text = "Fetch 1 Day HR")
                 }
             }
             item {
@@ -106,12 +106,13 @@ class MainActivity : ComponentActivity() {
                         val account = GoogleSignIn.getLastSignedInAccount(this@MainActivity)
                         if (account != null) {
                             lifecycleScope.launch {
-                                heartRateManager.getHeartRateData(30, 20, false) { heartRateData ->
-                                    Log.d(TAG, "30 Day HR: $heartRateData")
+                                fitnessDataManager.getFitnessData(DataType.TYPE_HEART_RATE_BPM,
+                                    30, 20, false) { fitnessData ->
+                                    Log.d(TAG, "30 Day HR: $fitnessData")
                                     runOnUiThread {
                                         Toast.makeText(
                                             this@MainActivity,
-                                            "Heart Rate Data: $heartRateData",
+                                            "Heart Rate Data: $fitnessData",
                                             Toast.LENGTH_LONG
                                         ).show()
                                     }
@@ -128,7 +129,7 @@ class MainActivity : ComponentActivity() {
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(text = "Fetch Historical HR")
+                    Text(text = "Fetch 30 Days HR")
                 }
             }
             item {
@@ -136,37 +137,15 @@ class MainActivity : ComponentActivity() {
                 Button(
                     onClick = {
                         CoroutineScope(Dispatchers.IO).launch {
-                            val accelerationDataPoints = fitnessDataManager.getFitnessData(DataType.TYPE_SPEED)
-                            // Save acceleration data to JSON file
-                            fitnessDataManager.saveFitnessData(accelerationDataPoints)
-                            fitnessDataManager.exportFitnessDataToExternalStorage(accelerationDataPoints)
+                            val fitnessRateDataPoints = fitnessDataManager.getFitnessData(DataType.TYPE_HEART_RATE_BPM)
+                            fitnessDataManager.exportFitnessDataToExternalStorage(fitnessRateDataPoints)
                         }
-                        Toast.makeText(this@MainActivity, "Acceleration Data exported!", Toast.LENGTH_SHORT)
+                        Toast.makeText(this@MainActivity, "Heart Rate Data exported!", Toast.LENGTH_SHORT)
                             .show()
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Export Acceleration Data")
-                }
-            }
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = {
-                        CoroutineScope(Dispatchers.IO).launch {
-                            val heartRateDataPoints = heartRateManager.getHeartRateData()
-                            // Save heart rate data to JSON file
-                            heartRateManager.saveHeartRateData(heartRateDataPoints)
-                            heartRateManager.exportHeartRateDataToExternalStorage(
-                                heartRateDataPoints
-                            )
-                        }
-                        Toast.makeText(this@MainActivity, "Data exported!", Toast.LENGTH_SHORT)
-                            .show()
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Export Data")
+                    Text("Export HR Data")
                 }
             }
             item {
@@ -179,13 +158,6 @@ class MainActivity : ComponentActivity() {
                     colors = ChipDefaults.primaryChipColors()
                 )
             }
-//            item {
-//                Chip(
-//                    onClick = { selectedAlgorithm = "Exponential" },
-//                    label = { Text("Exponential Mechanism") },
-//                    colors = ChipDefaults.primaryChipColors()
-//                )
-//            }
             item {
                 Chip(
                     onClick = { selectedAlgorithm = "k-Anonymity" },
@@ -245,32 +217,31 @@ class MainActivity : ComponentActivity() {
                         val epsilon = 1.0 // Example epsilon value
                         val k = 3 // Example k value for k-Anonymity
 
-                        val algorithm: (List<HeartRateDataPoint>, Double) -> List<HeartRateDataPoint> =
+                        val algorithm: (List<FitnessDataPoint>, Double) -> List<FitnessDataPoint> =
                             when (selectedAlgorithm) {
                                 "Laplace" -> DataProcessing::applyLaplaceMechanism
-                                "Exponential" -> DataProcessing::applyExponentialMechanism
                                 "k-Anonymity" -> { data, _ ->
                                     val dataPoints =
-                                        data.map { DataPoint(listOf(it.heartRate)) }
+                                        data.map { DataPoint(listOf(it.value)) }
                                     val anonymizedData =
                                         DataProcessing.personalizedKAnonymity(dataPoints, k)
                                     anonymizedData.map {
-                                        HeartRateDataPoint(
+                                        FitnessDataPoint(
                                             it.attributes[0].toLong(),
-                                            it.attributes[0]
+                                            it.attributes[0],
+                                            dataType = "HeartRate" // or the appropriate data type
                                         )
                                     }
                                 }
-
                                 else -> DataProcessing::applyLaplaceMechanism
                             }
 
-                        // Fetch data using HeartRateManager
+                        // Fetch data using FitnessDataManager
                         CoroutineScope(Dispatchers.IO).launch {
-                            val heartRateDataPoints = heartRateManager.getHeartRateData()
+                            val fitnessDataPoints = fitnessDataManager.getFitnessData(DataType.TYPE_HEART_RATE_BPM)
                             val results = Evaluation.evaluateAlgorithm(
                                 algorithm,
-                                heartRateDataPoints,
+                                fitnessDataPoints,
                                 epsilon
                             )
                             Log.d(TAG, "Evaluation Results: $results")

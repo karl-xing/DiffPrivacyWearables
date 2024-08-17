@@ -1,35 +1,35 @@
 package com.example.diffprivacywearables
 
-import com.example.diffprivacywearables.data.HeartRateDataPoint
+import com.example.diffprivacywearables.data.FitnessDataPoint
 import kotlin.system.measureTimeMillis
 
 object Evaluation {
 
     data class EvaluationResults(
         val computationTime: Long,
-        val powerConsumption: Double, // Placeholder for actual power consumption calculation
         val memoryUsage: Double, // Placeholder for actual memory usage calculation
-        val cpuUsage: Double // Placeholder for actual CPU usage calculation
+//        val cpuUsage: Double // Placeholder for actual CPU usage calculation
+//        val powerConsumption: Double, // Placeholder for actual power consumption calculation
     )
 
     fun evaluateAlgorithm(
-        algorithm: (List<HeartRateDataPoint>, Double) -> List<HeartRateDataPoint>,
-        data: List<HeartRateDataPoint>,
+        algorithm: (List<FitnessDataPoint>, Double) -> List<FitnessDataPoint>,
+        data: List<FitnessDataPoint>,
         epsilon: Double
     ): EvaluationResults {
         val computationTime = measureTimeMillis {
             algorithm(data, epsilon)
         }
 
-        val powerConsumption = measurePowerConsumption()
         val memoryUsage = measureMemoryUsage()
-        val cpuUsage = measureCPUUsage()
+//        val cpuUsage = measureCPUUsage()
+//        val powerConsumption = measurePowerConsumption()
 
         return EvaluationResults(
             computationTime = computationTime,
-            powerConsumption = powerConsumption,
             memoryUsage = memoryUsage,
-            cpuUsage = cpuUsage
+//            cpuUsage = cpuUsage,
+//            powerConsumption = powerConsumption
         )
     }
 

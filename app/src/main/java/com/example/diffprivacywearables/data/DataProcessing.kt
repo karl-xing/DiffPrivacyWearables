@@ -97,19 +97,19 @@ object DataProcessing {
         return assignedGroups.flatten()
     }
 
-    fun applyLaplaceMechanism(data: List<HeartRateDataPoint>, epsilon: Double): List<HeartRateDataPoint> {
+    fun applyLaplaceMechanism(data: List<FitnessDataPoint>, epsilon: Double): List<FitnessDataPoint> {
         // Implement the Laplace mechanism here
         return data.map {
             val noise = laplaceNoise(epsilon)
-            HeartRateDataPoint(it.timestamp, it.heartRate + noise)
+            FitnessDataPoint(it.timestamp, it.value + noise, it.dataType)
         }
     }
 
-    fun applyExponentialMechanism(data: List<HeartRateDataPoint>, epsilon: Double): List<HeartRateDataPoint> {
+    fun applyExponentialMechanism(data: List<FitnessDataPoint>, epsilon: Double): List<FitnessDataPoint> {
         // Implement the Exponential mechanism here
         return data.map {
             val noise = exponentialNoise(epsilon)
-            HeartRateDataPoint(it.timestamp, it.heartRate + noise)
+            FitnessDataPoint(it.timestamp, it.value + noise, it.dataType)
         }
     }
 
