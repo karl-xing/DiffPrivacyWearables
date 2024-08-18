@@ -1,5 +1,6 @@
 package com.example.diffprivacywearables.data
 
+import android.util.Log
 import kotlin.math.ln
 import kotlin.math.abs
 
@@ -10,16 +11,20 @@ object DataProcessing {
     fun personalizedKAnonymity(data: List<DataPoint>, k: Int): List<DataPoint> {
         // Step 1: Normalize attributes
         val normalizedData = normalizeData(data)
+//        Log.d("personalizedKAnonymity", "Step 1 - Normalized DataPoints: $normalizedData")
 
         // Step 2: Calculate entropy and assign weights
         val entropies = calculateEntropies(normalizedData)
         val weights = assignWeights(entropies)
+//        Log.d("personalizedKAnonymity", "Step 2 - Entropies: $entropies, Weights: $weights")
 
         // Step 3: Compute distance matrix
         val distanceMatrix = computeDistanceMatrix(normalizedData, weights)
+//        Log.d("personalizedKAnonymity", "Step 3 - Distance Matrix: $distanceMatrix")
 
         // Step 4: Apply V-MDAV for k-anonymity grouping
         val anonymizedData = applyVMdav(distanceMatrix, normalizedData, k)
+//        Log.d("personalizedKAnonymity", "Step 4 - Anonymized DataPoints: $anonymizedData")
 
         return anonymizedData
     }
@@ -47,31 +52,42 @@ object DataProcessing {
     }
 
     private fun calculateEntropies(data: List<DataPoint>): List<Double> {
-        return data[0].attributes.indices.map { index ->
-            val frequencies = data.groupingBy { it.attributes[index] }.eachCount()
-            val total = frequencies.values.sum().toDouble()
-            frequencies.values.sumOf { freq ->
-                val p = freq / total
-                -p * ln(p)
-            } / ln(total)
+        // Assuming each DataPoint has one attribute (heart rate) for simplicity
+        val attributeValues = data.map { it.attributes[0] }
+        val numBins = 10 // For simplicity, we can use 10 bins for entropy calculation
+        return listOf(calculateEntropyForNumericData(attributeValues, numBins))
+    }
+
+    private fun calculateEntropyForNumericData(data: List<Double>, numBins: Int): Double {
+        val minValue = data.minOrNull() ?: return 0.0
+        val maxValue = data.maxOrNull() ?: return 0.0
+        val binSize = (maxValue - minValue) / numBins
+
+        val bins = MutableList(numBins) { 0 }
+
+        for (value in data) {
+            val binIndex = ((value - minValue) / binSize).toInt().coerceIn(0, numBins - 1)
+            bins[binIndex]++
         }
+
+        val total = data.size.toDouble()
+        val probabilities = bins.map { it / total }
+
+        return -probabilities.filter { it > 0 }.sumOf { p -> p * ln(p) } / ln(numBins.toDouble())
     }
 
     private fun assignWeights(entropies: List<Double>): List<Double> {
+        val totalEntropy = entropies.sum()
         val q = entropies.size.toDouble()
-        return entropies.map { entropy ->
-            (1 - entropy) / (q - entropies.sum())
-        }
+        return entropies.map { (1 - it) / (q - totalEntropy) }
     }
 
     private fun computeDistanceMatrix(data: List<DataPoint>, weights: List<Double>): List<List<Double>> {
         return data.map { point1 ->
             data.map { point2 ->
-                point1.attributes.zip(point2.attributes)
-                    .mapIndexed { index, (attr1, attr2) ->
-                        weights[index] * abs(attr1 - attr2)
-                    }
-                    .sum()
+                point1.attributes.zip(point2.attributes).mapIndexed { index, (attr1, attr2) ->
+                    weights[index] * abs(attr1 - attr2)
+                }.sum()
             }
         }
     }
@@ -105,21 +121,17 @@ object DataProcessing {
         }
     }
 
-    fun applyExponentialMechanism(data: List<FitnessDataPoint>, epsilon: Double): List<FitnessDataPoint> {
-        // Implement the Exponential mechanism here
+    fun applyMechanismError(data: List<FitnessDataPoint>, epsilon: Double): List<FitnessDataPoint> {
+        // Error Log
+        Log.e("DataProcessing", "Applying mechanism error with epsilon")
         return data.map {
-            val noise = exponentialNoise(epsilon)
+            val noise = laplaceNoise(epsilon)
             FitnessDataPoint(it.timestamp, it.value + noise, it.dataType)
         }
     }
 
     private fun laplaceNoise(epsilon: Double): Double {
         // Generate Laplace noise based on epsilon
-        return Math.random() // This is a placeholder
-    }
-
-    private fun exponentialNoise(epsilon: Double): Double {
-        // Generate Exponential noise based on epsilon
         return Math.random() // This is a placeholder
     }
 }
