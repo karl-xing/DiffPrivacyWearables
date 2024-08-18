@@ -72,6 +72,58 @@ class MainActivity : ComponentActivity() {
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = {
+                        // Load fitness data from JSON
+                        val fitnessDataPoints = fitnessDataManager.loadFitnessDataFromJson(this@MainActivity, fitnessRequestId)
+
+                        if (fitnessDataPoints != null) {
+                            val epsilon = 0.9 // [0.5, 1.0]
+                            val k = 5         // [1, 5]
+
+                            val algorithm: (List<FitnessDataPoint>, Double) -> List<FitnessDataPoint> =
+                                when (selectedAlgorithm) {
+                                    "LDP" -> { data, epsilonValue ->
+                                        DataProcessing.applyLocalDifferentialPrivacy(data, epsilonValue)
+                                    }
+                                    "k-Anonymity" -> { data, _ ->
+                                        // Step 1: Convert to DataPoint
+                                        val dataPoints = data.map { DataPoint(listOf(it.value)) }
+//                                        Log.d("MainActivity", "Step 1 - Original DataPoints: $dataPoints")
+
+                                        // Step 2: Apply personalized K-Anonymity
+                                        val anonymizedDataPoints = DataProcessing.personalizedKAnonymity(dataPoints, k)
+
+                                        anonymizedDataPoints.mapIndexed { index, dataPoint ->
+                                            FitnessDataPoint(
+                                                timestamp = data[index].timestamp, // Preserve the original timestamp
+                                                value = dataPoint.attributes[0],   // The anonymized value
+                                                dataType = data[index].dataType    // Use the original dataType
+                                            )
+                                        }
+                                    }
+                                    else -> DataProcessing::applyMechanismError
+                                }
+
+                            CoroutineScope(Dispatchers.IO).launch {
+                                val results = Evaluation.evaluateAlgorithm(
+                                    algorithm,
+                                    fitnessDataPoints,
+                                    epsilon
+                                )
+                                Log.d("MainActivity", "Evaluation Results: $results")
+                            }
+                        } else {
+                            Log.e("MainActivity", "Failed to load fitness data from JSON")
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Load & Evaluate")
+                }
+            }
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = {
                         val account = GoogleSignIn.getLastSignedInAccount(this@MainActivity)
                         if (account != null) {
                             lifecycleScope.launch {
@@ -155,8 +207,8 @@ class MainActivity : ComponentActivity() {
             }
             item {
                 Chip(
-                    onClick = { selectedAlgorithm = "Laplace" },
-                    label = { Text("Laplace Mechanism") },
+                    onClick = { selectedAlgorithm = "LDP" },
+                    label = { Text("LDP Mechanism") },
                     colors = ChipDefaults.primaryChipColors()
                 )
             }
@@ -216,17 +268,20 @@ class MainActivity : ComponentActivity() {
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = {
-                        val epsilon = 1.0 // Example epsilon value
-                        val k = 3 // Example k value for k-Anonymity
+                        val epsilon = 0.8 // Example epsilon value
+                        val k = 5 // Example k value for k-Anonymity
 
                         val algorithm: (List<FitnessDataPoint>, Double) -> List<FitnessDataPoint> =
                             when (selectedAlgorithm) {
-                                "Laplace" -> DataProcessing::applyLaplaceMechanism
+                                "LDP" -> DataProcessing::applyLocalDifferentialPrivacy
                                 "k-Anonymity" -> { data, _ ->
                                     val dataPoints =
                                         data.map { DataPoint(listOf(it.value)) }
                                     val anonymizedData =
                                         DataProcessing.personalizedKAnonymity(dataPoints, k)
+                                    // Test k-anonymity, but below printing has only one list of values, like DataPoint(attributes=[0.13125])
+                                    Log.d("MainActivity", "Anonymized Data:")
+                                    anonymizedData.forEach { Log.d("MainActivity", it.toString()) }
                                     anonymizedData.map {
                                         FitnessDataPoint(
                                             it.attributes[0].toLong(),
@@ -253,57 +308,6 @@ class MainActivity : ComponentActivity() {
                 ) {
                     Text("Read & Evaluate")
                 }
-            }
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = {
-                        // Load fitness data from JSON
-                        val fitnessDataPoints = fitnessDataManager.loadFitnessDataFromJson(this@MainActivity, fitnessRequestId)
-
-                        if (fitnessDataPoints != null) {
-                            val epsilon = 1.0 // Example epsilon value
-                            val k = 5 // Example k value for k-Anonymity
-
-                            val algorithm: (List<FitnessDataPoint>, Double) -> List<FitnessDataPoint> =
-                                when (selectedAlgorithm) {
-                                    "Laplace" -> DataProcessing::applyLaplaceMechanism
-                                    "k-Anonymity" -> { data, _ ->
-                                        // Step 1: Convert to DataPoint
-                                        val dataPoints = data.map { DataPoint(listOf(it.value)) }
-                                        Log.d("MainActivity", "Step 1 - Original DataPoints: $dataPoints")
-
-                                        // Step 2: Apply personalized K-Anonymity
-                                        val anonymizedDataPoints = DataProcessing.personalizedKAnonymity(dataPoints, k)
-
-                                        anonymizedDataPoints.mapIndexed { index, dataPoint ->
-                                            FitnessDataPoint(
-                                                timestamp = data[index].timestamp, // Preserve the original timestamp
-                                                value = dataPoint.attributes[0],   // The anonymized value
-                                                dataType = data[index].dataType    // Use the original dataType
-                                            )
-                                        }
-                                    }
-                                    else -> DataProcessing::applyMechanismError
-                                }
-
-                            CoroutineScope(Dispatchers.IO).launch {
-                                val results = Evaluation.evaluateAlgorithm(
-                                    algorithm,
-                                    fitnessDataPoints,
-                                    epsilon
-                                )
-                                Log.d("MainActivity", "Evaluation Results: $results")
-                            }
-                        } else {
-                            Log.e("MainActivity", "Failed to load fitness data from JSON")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Load & Evaluate")
-                }
-
             }
         }
     }
