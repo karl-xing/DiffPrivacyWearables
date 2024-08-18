@@ -12,11 +12,13 @@ import com.google.android.gms.fitness.data.Field
 import com.google.android.gms.fitness.request.DataReadRequest
 import com.google.android.gms.fitness.result.DataReadResponse
 import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.tasks.await
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.io.File
+import java.io.InputStreamReader
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
@@ -39,8 +41,8 @@ class FitnessDataManager(private val context: Context) {
 
     suspend fun getFitnessData(
         dataType: DataType,
-        days: Long = 30,
-        bucketTimeMinutes: Int = 20,
+        days: Long = 60,
+        bucketTimeMinutes: Int = 10,
         aggregate: Boolean = true,
         callback: (String) -> Unit = {}
     ): List<FitnessDataPoint> {
@@ -141,6 +143,21 @@ class FitnessDataManager(private val context: Context) {
             }
         }
         return fitnessData
+    }
+
+    // Load JSON file to fitness data
+    fun loadFitnessDataFromJson(context: Context, resourceId: Int): List<FitnessDataPoint>? {
+        return try {
+            val inputStream = context.resources.openRawResource(resourceId)
+            val reader = InputStreamReader(inputStream)
+            val type = object : TypeToken<List<FitnessDataPoint>>() {}.type
+            val heartRateData: List<FitnessDataPoint> = Gson().fromJson(reader, type)
+            reader.close()
+            heartRateData
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
     }
 
     // Save fitness data to JSON file
