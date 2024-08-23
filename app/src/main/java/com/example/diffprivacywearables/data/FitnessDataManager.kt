@@ -118,8 +118,8 @@ class FitnessDataManager(private val context: Context) {
                         val longitude = dp.getValue(Field.FIELD_LONGITUDE).asFloat()
                         "Lat: $latitude, Long: $longitude"
                     }
-                    // Add other DataType cases here as needed
-                    else -> dp.getValue(Field.FIELD_AVERAGE).asFloat().toString() // Default case
+                    // Other DataType
+                    else -> dp.getValue(Field.FIELD_AVERAGE).asFloat().toString()
                 }
                 val timestamp = dp.getTimestamp(TimeUnit.MILLISECONDS)
                 val date = sdf.format(Date(timestamp))
@@ -165,23 +165,6 @@ class FitnessDataManager(private val context: Context) {
 //        val jsonString = gson.toJson(fitnessDataList)
 //        context.openFileOutput(fileName, Context.MODE_PRIVATE).use { outputStream ->
 //            outputStream.write(jsonString.toByteArray())
-//        }
-//    }
-
-    // Load fitness data from JSON file
-//    fun loadFitnessData(): List<FitnessDataPoint>? {
-//        return try {
-//            val file = File(context.filesDir, fileName)
-//            if (file.exists()) {
-//                val jsonString = file.readText()
-//                val type = object : TypeToken<List<FitnessDataPoint>>() {}.type
-//                gson.fromJson(jsonString, type)
-//            } else {
-//                null // No data found
-//            }
-//        } catch (e: Exception) {
-//            e.printStackTrace()
-//            null
 //        }
 //    }
 

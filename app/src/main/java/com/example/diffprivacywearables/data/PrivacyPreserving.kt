@@ -8,11 +8,29 @@ import kotlin.math.sign
 
 data class DataPoint(val attributes: List<Double>)
 
-object DataProcessing {
+object PrivacyPreserving {
+
+    fun applyKAnonymity(data: List<FitnessDataPoint>, k: Int): List<FitnessDataPoint> {
+        // Convert FitnessDataPoints to DataPoints
+        val dataPoints = data.map { DataPoint(listOf(it.value)) }
+
+        // Apply personalized k-Anonymity
+        val anonymizedDataPoints = personalizedKAnonymity(dataPoints, k)
+
+        // Convert back to FitnessDataPoints
+        return anonymizedDataPoints.mapIndexed { index, dataPoint ->
+            FitnessDataPoint(
+                timestamp = data[index].timestamp, // Preserve the original timestamp
+                value = dataPoint.attributes[0],   // The anonymized value
+                dataType = data[index].dataType    // Use the original dataType
+            )
+        }
+    }
 
     fun personalizedKAnonymity(data: List<DataPoint>, k: Int): List<DataPoint> {
-        // Step 1: Normalize attributes
-        val normalizedData = normalizeData(data)
+        // Step 1: Normalize attributes, data to [0, 1]
+//        val normalizedData = normalizeData(data)
+        val normalizedData = data
 //        Log.d("personalizedKAnonymity", "Step 1 - Normalized DataPoints: $normalizedData")
 
         // Step 2: Calculate entropy and assign weights
@@ -26,8 +44,7 @@ object DataProcessing {
 
         // Step 4: Apply V-MDAV for k-anonymity grouping
         val anonymizedData = applyVMdav(distanceMatrix, normalizedData, k)
-        Log.d("personalizedKAnonymity", "Step 4 - Anonymized DataPoints: $anonymizedData")
-
+//        Log.d("personalizedKAnonymity", "Step 4 - Anonymized DataPoints: $anonymizedData")
         return anonymizedData
     }
 
@@ -54,9 +71,8 @@ object DataProcessing {
     }
 
     private fun calculateEntropies(data: List<DataPoint>): List<Double> {
-        // Assuming each DataPoint has one attribute (heart rate) for simplicity
         val attributeValues = data.map { it.attributes[0] }
-        val numBins = 10 // For simplicity, we can use 10 bins for entropy calculation
+        val numBins = 10                // 10 bins for entropy calculation
         return listOf(calculateEntropyForNumericData(attributeValues, numBins))
     }
 
@@ -64,7 +80,6 @@ object DataProcessing {
         val minValue = data.minOrNull() ?: return 0.0
         val maxValue = data.maxOrNull() ?: return 0.0
         val binSize = (maxValue - minValue) / numBins
-
         val bins = MutableList(numBins) { 0 }
 
         for (value in data) {
@@ -101,7 +116,6 @@ object DataProcessing {
         while (unassignedIndices.size > k - 1) {
             val centerIndex = unassignedIndices.random()
             val distancesFromCenter = distanceMatrix[centerIndex]
-
             val closestIndices = unassignedIndices
                 .sortedBy { distancesFromCenter[it] }
                 .take(k)
@@ -118,7 +132,7 @@ object DataProcessing {
     //-----------------------------        Error Log         -----------------------------------//
     fun applyMechanismError(data: List<FitnessDataPoint>, epsilon: Double): List<FitnessDataPoint> {
         // Error Log
-        Log.e("DataProcessing", "Applying mechanism error with epsilon")
+        Log.e("DataProcessing", "Algorithm Error")
         return data.map {
             val noise = laplace()
             FitnessDataPoint(it.timestamp, it.value + noise, it.dataType)
@@ -130,27 +144,34 @@ object DataProcessing {
     }
 
     //-----------------------------Local Differential Privacy-----------------------------------//
-    fun applyLocalDifferentialPrivacy(
+    fun localDifferentialPrivacy(
         data: List<FitnessDataPoint>,
         epsilon: Double,
         alpha: Long  = 3L             // [1, 10] Control the threshold for keypoint identification
     ): List<FitnessDataPoint> {
         // Step 1: Identify salient points
-        Log.d("LDP", "data: $data")
+//        Log.d("LDP", "data: $data")
         val salientPoints = identifySalientPoints(data, alpha)
-        val values = salientPoints.map { it.value }
+//        val values = salientPoints.map { it.value }
+
+        val values = data.map { it.value }
         val xmin = values.minOrNull() ?: return emptyList()
         val xmax = values.maxOrNull() ?: return emptyList()
         val xmean = values.average()
 
-        return salientPoints.map { point ->
+        return data.map { point ->
             val yi = normalizeDataPoint(point.value, xmin, xmax, xmean)
+
+            // Apply RR Mechanism
             val ri = calculateAdaptiveRandomValue(yi, epsilon)
-            var noisyValue = addNoiseToData(point.value, ri, xmax - xmin, epsilon)
-            Log.d("LDP", "noisyValue: $noisyValue")
+//            var noisyValue = addNoiseToData(point.value, ri, xmax - xmin, epsilon)
+            // No RR Mechanism
+            var noisyValue = addLaplaceNoise(point.value, xmax - xmin, epsilon)
+//            Log.d("LDP", "noisyValue: $noisyValue")
 
             // Ensure the value remains within the valid range
             noisyValue = noisyValue.coerceIn(40.0, 200.0)
+//            Log.d("LDP", "noisyValue after coerce: $noisyValue")
 
             FitnessDataPoint(
                 timestamp = point.timestamp,
@@ -160,6 +181,7 @@ object DataProcessing {
         }
     }
 
+    // Identify salient points
     private fun identifySalientPoints(data: List<FitnessDataPoint>, alpha: Long): List<FitnessDataPoint> {
         val salientPoints = mutableListOf<FitnessDataPoint>()
         val derivatives = mutableListOf<Double>()
@@ -194,7 +216,14 @@ object DataProcessing {
     private fun laplaceNoise(deltaS: Double, epsilon: Double): Double {
         val scale = deltaS / epsilon
         val uniform = Math.random() - 0.5
-//        return -scale * sign(uniform) * ln(1 - 2 * abs(uniform))
-        return -scale * Math.signum(uniform) * Math.log(1 - 2 * Math.abs(uniform))
+        return -scale * sign(uniform) * ln(1 - 2 * abs(uniform))
+//        return -scale * Math.signum(uniform) * Math.log(1 - 2 * Math.abs(uniform))
+    }
+
+    private fun addLaplaceNoise(xi: Double, deltaS: Double, epsilon: Double): Double {
+        val scale = deltaS / epsilon
+        val uniform = Math.random() - 0.5
+        val laplaceNoise = -scale * sign(uniform) * ln(1 - 2 * abs(uniform))
+        return xi + laplaceNoise
     }
 }
