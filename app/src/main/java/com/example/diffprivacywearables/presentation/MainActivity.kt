@@ -2,6 +2,7 @@
 
 package com.example.diffprivacywearables.presentation
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -14,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import androidx.wear.compose.material.*
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
-import com.example.diffprivacywearables.data.DataProcessing
+import com.example.diffprivacywearables.data.PrivacyPreserving
 import com.example.diffprivacywearables.Evaluation
 import com.example.diffprivacywearables.R
 import com.example.diffprivacywearables.data.FitnessDataManager
@@ -30,7 +31,8 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val TAG = "GoogleFit"
-    private val fitnessRequestId = R.raw.fitness_data2
+    private val fitnessRequestId = R.raw.fitness_data6
+//    private val fitnessRequestId = R.raw.fitness_data2
     private lateinit var fitnessDataManager: FitnessDataManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,7 +57,8 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun MainScreen() {
         var selectedAlgorithm by remember { mutableStateOf("k-Anonymity") }
-        val dataTypes = listOf("Heart Rate", "Step Count")
+        selectedAlgorithm = "LDP"
+        val dataTypes = listOf("Heart Rate", "Acceleration")
             // "Heart Rate", "Step Count", "Acceleration"
         val evaluationMetrics =
             listOf("Computation Time", "Memory Usage")
@@ -72,35 +75,35 @@ class MainActivity : ComponentActivity() {
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = {
+                        // Create an intent to start TestActivity
+                        val intent = Intent(this@MainActivity, TestActivity::class.java)
+                        startActivity(intent)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("L&Evaluate Auto")
+                }
+            }
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = {
                         // Load fitness data from JSON
                         val fitnessDataPoints = fitnessDataManager.loadFitnessDataFromJson(this@MainActivity, fitnessRequestId)
 
                         if (fitnessDataPoints != null) {
-                            val epsilon = 0.9 // [0.5, 1.0]
-                            val k = 5         // [1, 5]
+                            val epsilon = 0.5 // [0.5, 1.0]
+                            val k = 1         // [1, 5]
 
                             val algorithm: (List<FitnessDataPoint>, Double) -> List<FitnessDataPoint> =
                                 when (selectedAlgorithm) {
                                     "LDP" -> { data, epsilonValue ->
-                                        DataProcessing.applyLocalDifferentialPrivacy(data, epsilonValue)
+                                        PrivacyPreserving.localDifferentialPrivacy(data, epsilonValue)
                                     }
                                     "k-Anonymity" -> { data, _ ->
-                                        // Step 1: Convert to DataPoint
-                                        val dataPoints = data.map { DataPoint(listOf(it.value)) }
-//                                        Log.d("MainActivity", "Step 1 - Original DataPoints: $dataPoints")
-
-                                        // Step 2: Apply personalized K-Anonymity
-                                        val anonymizedDataPoints = DataProcessing.personalizedKAnonymity(dataPoints, k)
-
-                                        anonymizedDataPoints.mapIndexed { index, dataPoint ->
-                                            FitnessDataPoint(
-                                                timestamp = data[index].timestamp, // Preserve the original timestamp
-                                                value = dataPoint.attributes[0],   // The anonymized value
-                                                dataType = data[index].dataType    // Use the original dataType
-                                            )
-                                        }
+                                        PrivacyPreserving.applyKAnonymity(data, k)
                                     }
-                                    else -> DataProcessing::applyMechanismError
+                                    else -> PrivacyPreserving::applyMechanismError
                                 }
 
                             CoroutineScope(Dispatchers.IO).launch {
@@ -109,7 +112,7 @@ class MainActivity : ComponentActivity() {
                                     fitnessDataPoints,
                                     epsilon
                                 )
-                                Log.d("MainActivity", "Evaluation Results: $results")
+                                Log.d("MainActivity", "Eva_Results: $results")
                             }
                         } else {
                             Log.e("MainActivity", "Failed to load fitness data from JSON")
@@ -117,9 +120,25 @@ class MainActivity : ComponentActivity() {
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Load & Evaluate")
+                    Text("L&Evaluate Man")
                 }
             }
+            item {  Text("Select Algorithm")  }
+            item {
+                Chip(
+                    onClick = { selectedAlgorithm = "LDP" },
+                    label = { Text("LDP Mechanism") },
+                    colors = ChipDefaults.primaryChipColors()
+                )
+            }
+            item {
+                Chip(
+                    onClick = { selectedAlgorithm = "k-Anonymity" },
+                    label = { Text("k-Anonymity") },
+                    colors = ChipDefaults.primaryChipColors()
+                )
+            }
+            item {  Text("Extract Data")  }
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
@@ -203,21 +222,49 @@ class MainActivity : ComponentActivity() {
                 }
             }
             item {
-                Text("Select Algorithm")
-            }
-            item {
-                Chip(
-                    onClick = { selectedAlgorithm = "LDP" },
-                    label = { Text("LDP Mechanism") },
-                    colors = ChipDefaults.primaryChipColors()
-                )
-            }
-            item {
-                Chip(
-                    onClick = { selectedAlgorithm = "k-Anonymity" },
-                    label = { Text("Personalized k-Anonymity") },
-                    colors = ChipDefaults.primaryChipColors()
-                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        val epsilon = 0.5 // Example epsilon value
+                        val k = 5 // Example k value for k-Anonymity
+
+                        val algorithm: (List<FitnessDataPoint>, Double) -> List<FitnessDataPoint> =
+                            when (selectedAlgorithm) {
+                                "LDP" -> PrivacyPreserving::localDifferentialPrivacy
+                                "k-Anonymity" -> { data, _ ->
+                                    val dataPoints =
+                                        data.map { DataPoint(listOf(it.value)) }
+                                    val anonymizedData =
+                                        PrivacyPreserving.personalizedKAnonymity(dataPoints, k)
+                                    // Test k-anonymity, but below printing has only one list of values, like DataPoint(attributes=[0.13125])
+                                    Log.d("MainActivity", "Anonymized Data:")
+                                    anonymizedData.forEach { Log.d("MainActivity", it.toString()) }
+                                    anonymizedData.map {
+                                        FitnessDataPoint(
+                                            it.attributes[0].toLong(),
+                                            it.attributes[0],
+                                            dataType = "HeartRate" // or the appropriate data type
+                                        )
+                                    }
+                                }
+                                else -> PrivacyPreserving::applyMechanismError
+                            }
+
+                        // Fetch data using FitnessDataManager
+                        CoroutineScope(Dispatchers.IO).launch {
+                            val fitnessDataPoints = fitnessDataManager.getFitnessData(DataType.TYPE_HEART_RATE_BPM)
+                            val results = Evaluation.evaluateAlgorithm(
+                                algorithm,
+                                fitnessDataPoints,
+                                epsilon
+                            )
+                            Log.d(TAG, "Evaluation Results: $results")
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Read & Evaluate")
+                }
             }
             item {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -263,51 +310,6 @@ class MainActivity : ComponentActivity() {
                         Switch(checked = selectedMetrics.contains(metric), onCheckedChange = null)
                     }
                 )
-            }
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = {
-                        val epsilon = 0.8 // Example epsilon value
-                        val k = 5 // Example k value for k-Anonymity
-
-                        val algorithm: (List<FitnessDataPoint>, Double) -> List<FitnessDataPoint> =
-                            when (selectedAlgorithm) {
-                                "LDP" -> DataProcessing::applyLocalDifferentialPrivacy
-                                "k-Anonymity" -> { data, _ ->
-                                    val dataPoints =
-                                        data.map { DataPoint(listOf(it.value)) }
-                                    val anonymizedData =
-                                        DataProcessing.personalizedKAnonymity(dataPoints, k)
-                                    // Test k-anonymity, but below printing has only one list of values, like DataPoint(attributes=[0.13125])
-                                    Log.d("MainActivity", "Anonymized Data:")
-                                    anonymizedData.forEach { Log.d("MainActivity", it.toString()) }
-                                    anonymizedData.map {
-                                        FitnessDataPoint(
-                                            it.attributes[0].toLong(),
-                                            it.attributes[0],
-                                            dataType = "HeartRate" // or the appropriate data type
-                                        )
-                                    }
-                                }
-                                else -> DataProcessing::applyMechanismError
-                            }
-
-                        // Fetch data using FitnessDataManager
-                        CoroutineScope(Dispatchers.IO).launch {
-                            val fitnessDataPoints = fitnessDataManager.getFitnessData(DataType.TYPE_HEART_RATE_BPM)
-                            val results = Evaluation.evaluateAlgorithm(
-                                algorithm,
-                                fitnessDataPoints,
-                                epsilon
-                            )
-                            Log.d(TAG, "Evaluation Results: $results")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Read & Evaluate")
-                }
             }
         }
     }
