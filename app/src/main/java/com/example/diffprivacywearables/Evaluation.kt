@@ -27,8 +27,11 @@ object Evaluation {
         for (paramValue in parameterValues) {
             val paramResults = mutableListOf<EvaluationResults>()
 
-            repeat(10) { // Run the evaluation 10 times for each parameter value
+            repeat(20) { // Run the evaluation 10 times for each parameter value
                 System.gc() // Trigger garbage collection to reduce interference
+                runBlocking {
+                    delay(100)
+                }
 
                 // Initial memory usage
                 val initialMemory = runtime.totalMemory() - runtime.freeMemory()
@@ -52,12 +55,7 @@ object Evaluation {
                         memoryUsage = memoryUsage
                     )
                 )
-
-                runBlocking {
-                    delay(100)
-                }
             }
-
             // Store the results for this parameter value
             results[paramValue] = paramResults
         }

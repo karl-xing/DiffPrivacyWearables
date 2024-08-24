@@ -74,15 +74,23 @@ class MainActivity : ComponentActivity() {
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
-                    onClick = {
-                        // Create an intent to start TestActivity
-                        val intent = Intent(this@MainActivity, TestActivity::class.java)
-                        startActivity(intent)
-                    },
+                    onClick = { startTestActivityWithDataset(1) },
                     modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("L&Evaluate Auto")
-                }
+                ) { Text("Load&E Data2") }
+            }
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = { startTestActivityWithDataset(6) },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Load&E Data6") }
+            }
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = { startTestActivityWithDataset(11) },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Load&E Data11") }
             }
             item {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -312,5 +320,12 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    private fun startTestActivityWithDataset(dataSelection: Int) {
+        val intent = Intent(this, TestActivity::class.java).apply {
+            putExtra("DATA_SELECTION", dataSelection)
+        }
+        startActivity(intent)
     }
 }

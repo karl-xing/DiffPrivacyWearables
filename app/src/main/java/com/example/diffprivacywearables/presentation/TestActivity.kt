@@ -20,23 +20,32 @@ class TestActivity : ComponentActivity() {
 //        setContentView(R.layout.activity_test) // Set your layout if you need one
         fitnessDataManager = FitnessDataManager(this)
 
+        // Retrieve the dataset selection from the Intent
+        val dataSelection = intent.getIntExtra("DATA_SELECTION", 1)
+
         lifecycleScope.launch(Dispatchers.IO) {
-            testPrivacyPreservingAlgorithms()
+            testPrivacyPreservingAlgorithms(dataSelection)
             finish() // Finish the activity after task completion
         }
     }
 
-    private fun testPrivacyPreservingAlgorithms() {
+    private fun testPrivacyPreservingAlgorithms(dataSelection: Int = 1) {
         // Load fitness data from JSON
-//        val fitnessRequestId = R.raw.fitness_data2    // 450 records Heart Rate
-        val fitnessRequestId = R.raw.fitness_data6      // 1200 records Heart Rate
-//        val fitnessRequestId = R.raw.fitness_data11   // 5751 records ACC
+        var fitnessRequestId = R.raw.fitness_data2      // 450 records Heart Rate
+        when (dataSelection) {
+            6 -> {
+                fitnessRequestId = R.raw.fitness_data6      // 1200 records Heart Rate
+            }
+            11 -> {
+                fitnessRequestId = R.raw.fitness_data11   // 5751 records ACC
+            }
+        }
 
         val fitnessDataPoints = fitnessDataManager.loadFitnessDataFromJson(this, fitnessRequestId)
 
         if (fitnessDataPoints != null) {
-            val kValues = listOf(2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0)
-            val epsilonValues = listOf(0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
+            val kValues = listOf(2.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0)
+            val epsilonValues = listOf(0.2, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
 
             // Test LDP with different epsilon values
             val ldpResults = Evaluation.evaluateAlgorithmWithParameters(
